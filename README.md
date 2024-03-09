@@ -3,10 +3,28 @@ A project that implements a free standing multilayer perceptron in C (MLP) witho
 
 With reference to [Feasibility of a Neural Network with Linearly Approximated Functions on Zynq FPGA by Skrbek, M., Kubalík, P.	](10.1109/ICECS202256217.2022.9970813 ).
 
+
 ## Run instructions
 If you do not have actual RISC V hardware to run on, use [Godbolt](https://godbolt.org/). It offers a RISC-V clang which lets you visualize the assembly used.
 
-Otherwise, you could just run the makefile provided. However, since this project originally consisted of a hardware component in FPGA, its quite useless to have the bin file alone. If an FPGA is available, the hardware SystemVerilog code was synthesised from [Simple RISC-V by tilk](https://github.com/tilk/riscv-simple-sv).
+Otherwise, you could just run the makefile provided. However, since this project originally consisted of a hardware component in a PYNQ FPGA, its quite useless to have the bin file alone. If an FPGA is available, the hardware SystemVerilog code was synthesised from [Simple RISC-V by tilk](https://github.com/tilk/riscv-simple-sv).
+
+### Godbolt instructions
+1. Go to [Godbolt](https://godbolt.org/)
+2. Go to compiler dropdown, change to `RISV-V (32-bits) gcc`. As far as I know, any is fine.
+3. If the assumption is that the hardware has multiplication support, press the settings and paste in `-mabi=ilp32 -march=rv32im` under environment variables.
+
+### Makefile instructions if FPGA (Debian Linux)
+
+ 1. Open bash and run following: 
+ ```bash
+sudo apt install srecord
+sudo apt install gcc-riscv64-unknown-elf
+```
+ 2. go to folder **Vivado/RISCV_sources/sim/tests**
+ 3. run `make all`, which creates *.vh files with binary which are used for simulations.
+
+ > Note: This makefile currently assumes RV32IM is enabled. (i.e hardware MUL)
 
 ## Motivation/Objective
 The original objective of this project was to implement custom extension instructions for RISC-V that use a linear aproximation of non-linear functions used by machine learining. However to perform a proper benchmark, there was a need to create a ML neural network in software using C first, given the nature of the project ensures that there will be no software support, only raw RISC-V assembly or a RISC-V toolchain.
@@ -171,3 +189,9 @@ As such, more work has to be done on the RNG module and RDTIME modules. These tw
 
 Likewise, if an RNG module is created, a custom macro header file or toolchain has to be built to allow for RNG to have proper software support to load values into the registers of the RISC V CPU.
 
+I would have liked to explore RBF neurons in C too. Maybe for another time.
+
+## Code Usage disclaimer
+
+This used to be my part of a school project, but I just found it so interesting that I feel it be a shame to not share it.
+Feel free to fork or expand on it if you feel inspired by it.
