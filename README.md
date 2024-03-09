@@ -1,21 +1,26 @@
 # Multilayer-perceptron-in-C
-A project that implements a free standing multilayer perceptron in C (MLP) without use of any stdlibs, only linear approximated math. With reference to [Feasibility of a Neural Network with Linearly Approximated Functions on Zynq FPGA by Skrbek, M., Kubalík, P.	](10.1109/ICECS202256217.2022.9970813 )
+A project that implements a free standing multilayer perceptron in C (MLP) without use of any stdlibs, only linear approximated math. 
+
+With reference to [Feasibility of a Neural Network with Linearly Approximated Functions on Zynq FPGA by Skrbek, M., Kubalík, P.	](10.1109/ICECS202256217.2022.9970813 ).
+
+## Run instructions
+If you do not have actual RISC V hardware to run on, use [Godbolt](https://godbolt.org/). It offers a RISC-V clang which lets you visualize the assembly used.
+
+Otherwise, you could just run the makefile provided. However, since this project originally consisted of a hardware component in FPGA, its quite useless to have the bin file alone. If an FPGA is available, the hardware SystemVerilog code was synthesised from [Simple RISC-V by tilk](https://github.com/tilk/riscv-simple-sv).
 
 ## Motivation/Objective
-
 The original objective of this project was to implement custom extension instructions for RISC-V that use a linear aproximation of non-linear functions used by machine learining. However to perform a proper benchmark, there was a need to create a ML neural network in software using C first, given the nature of the project ensures that there will be no software support, only raw RISC-V assembly or a RISC-V toolchain.
 
 Only then can the model be taught on input data and test it on "standard" RISC-V implementation to compare against the hardware implementation in an FPGA.
 
 ## Initial problems faced
 ### Lack of standard libaries in freestanding environment
-As the custom RISC V components are expected to not have any kernel or operating system, just raw bytecode into a BRAM, the use of standard libraries are frowned upon as some states like `printf` result in a trap to the kernel. 
+As the custom RISC V components are expected to not have any kernel or operating system, just raw bytecode loaded into a BRAM, the use of standard libraries are frowned upon as some functions like `printf` result in a trap to the kernel and certain math libraries are unavailable.
 
 However, in the final code, the feature to use the C stdlibs can be toggled by a `DEBUG` macro. This was important to validate the output of the software on standard programming environments (tested on [C compiler explorer](https://godbolt.org/)).
 
 ### Need for customizability
 Another minor concern was that standard instructions like MUL could be disabled based on the RISC V extension spec (R32VIM extension). While the actual hardware implemented in an FPGA could toggle it on and off, in the case that it could not, a linearly approximated model would be used as a stand in.
-
 
 ## Testing and experimentation
 
@@ -28,14 +33,14 @@ The error calculations are performed under the following assumptions.
 3) Errors are calculated based off 1000 uniformly spaced samples from the X Lower to X Upper bounds.
 
 <div align="center">
-  <img src="../sources/LAF-EXP.png" width="45%" />
-  <img src="../sources/LAF-LOG.png" width="45%" />
+  <img src="sources/LAF-EXP.png" width="45%" />
+  <img src="sources/LAF-LOG.png" width="45%" />
   <br />
-  <img src="../sources/LAF-AF.png" width="45%" />
-  <img src="../sources/LAF-AFR.png" width="45%" />
+  <img src="sources/LAF-AF.png" width="45%" />
+  <img src="sources/LAF-AFR.png" width="45%" />
   <br />
-  <img src="../sources/LAF-SQR.png" width="45%" />
-  <img src="../sources/LAF-SQRT.png" width="45%" />
+  <img src="sources/LAF-SQR.png" width="45%" />
+  <img src="sources/LAF-SQRT.png" width="45%" />
   <br />
 </div>
 
@@ -54,16 +59,16 @@ This results in the following expected errors:
 
 Most of the errors are quite low as found by the original paper. The graphs show that the LAF functions do roughly approximate the original functions quite closely.
 
-
+## C Implementation
 ### Software LAF C library: <laf_sw.h>
-To solve the issue of implementing a neural network in C which uses normal RISC-V instructions to solve the XOR Problem, a new custom header file and its implementation had to be created. These are found at [laf_sw.h](../Vivado/RISCV_sources/sim/c_source/laf_sw.h) and [laf_sw.c](../Vivado/RISCV_sources/sim/c_source/laf_sw.c). 
+To solve the issue of implementing a neural network in C which uses normal RISC-V instructions to solve the XOR Problem, a new custom header file and its implementation had to be created. These are found at [laf_sw.h](Vivado/RISCV_sources/sim/c_source/laf_sw.h) and [laf_sw.c](Vivado/RISCV_sources/sim/c_source/laf_sw.c). 
 
 These files define a custom math library as well as all the software implementations for the LAF functions, as the standard library is unavailable on freestanding environments, and many of the math functions that are usually convieniently available are not available. 
 
-The implementation assumes 32 bit registers, hence only `float` and `int` types are used. This is important as some of the helper functions like `leftmostBit()` (which uses a technique called bit smearing for specifically 64 bit long) and the complex functions like `MUL(x, y)` and `SQR(val)` have to use such assumptions to prevent overflow errors.
+The implementation assumes 32 bit registers, hence only `float` and `int` types are used. This is important as some of the helper functions like `leftmostBit()` (which uses a technique called bit smearing for specifically 32 bit long) and the complex functions like `MUL(x, y)` and `SQR(val)` have to use such assumptions to prevent overflow errors.
 
 ### Software implementation of MLP: mlp_sw.c
-Using the custom software LAF library, a whole program to perform MultiLayer Perceptron was written using C. This program works in freestanding environments (if not in `DEBUG` mode) which we need in the RISC V processing system. This file is found at [mlp_sw.c](../Vivado/RISCV_sources/sim/c_source/mlp_sw.c). 
+Using the custom software LAF library, a whole program to perform MultiLayer Perceptron was written using C. This program works in freestanding environments (if not in `DEBUG` mode) which we need in the RISC V processing system. This file is found at [mlp_sw.c](Vivado/RISCV_sources/sim/c_source/mlp_sw.c). 
 
 In summary, the whole program works by assuming MSE Loss as a loss function and tanh as the activation function. By calculating the forward pass and then doing backpropagation and updating the weights and biases via Stochastic Gradient Descent, the model should be able to learn how to solve the XOR problem even with low counts of hidden neurons so long as there is enough epoches for it to reach the local minima for loss.
 
@@ -91,31 +96,29 @@ The choice for MSE loss is not very typical for a classification problem, since 
 
 Below is a screenshot of the model managing to solve the XOR problem with the hyperparameters of `HIDDEN_SIZE 2`, `LEARNING_RATE 0.01` and `NUM_EPOCHS 10000`. This was performed in a DEBUG environment outside of the RISC-V processor to test that the algorithm is functional.
 
-![XOR Solved](../sources/MLP_C_Output.png)
+![XOR Solved](sources/MLP_C_Output.png)
 
 Here is another non-linearly seperable problem for XNOR solved by the MLP. Hyperparameters are set to `HIDDEN_SIZE 5`, `LEARNING_RATE 0.01` and `NUM_EPOCHS 10000`.
 
-![XNOR Solved](../sources/MLP_C_XNOR_Output.png)
+![XNOR Solved](sources/MLP_C_XNOR_Output.png)
 
 > It is recommended to compile the software with RV32IM extensions for hardware multiplication and division. This is as having the compiler generate software multiplication wastes a lot of cycles and its not as far of a test. This also requires to edit constants.sv file in Vivado to enable the hardware MUL and DIV instructions.
 
 > The lack of an RNG module severly hurts the convergence of the MLP to an optima. Initial weights cannot be 0, but having them all as the same small constant values causes symmetry issues.
 
 
-
-
-
 ### The need for randomness
 
-Why random weights and gradients are needed?
-From testing, an RNG module is required to ensure the convergence of the MLP to an optima as it is needed to generate initial weights and gradients are essential to ensuring that the model remains asymmetric, i.e the neurons compute different outputs during forward propagation and get different gradients during backpropagation. 
+From testing, it was found that random weights and gradients are needed. 
+
+This would be implemented via an RNG module which is required to ensure the convergence of the MLP to an optima as it is needed to generate initial weights and gradients are essential to ensuring that the model remains asymmetric, i.e the neurons compute different outputs during forward propagation and get different gradients during backpropagation. 
 
 Making them all small constant values results in a model that never converges as shown below with the hyperparameters of `HIDDEN_SIZE 2`, `LEARNING_RATE 0.01` and `NUM_EPOCHS 10000`. All weights are initialized to 0.1 and weightGradients to 0.01.
-![XOR Uncertain](../sources/MLP_C_XOR_ConstInit_Output.png)
+![XOR Uncertain](sources/MLP_C_XOR_ConstInit_Output.png)
 
 The weights and biases for all the layers end up symmetric which leads to this bad prediction.
 
-![XOR Symmetry](../sources/MLP_C_XOR_ConstInit_Weight_Bias.png)
+![XOR Symmetry](sources/MLP_C_XOR_ConstInit_Weight_Bias.png)
 
 ## Future exploration and updates (Requires FPGA!)
 ### Making an RNG module - The quest for randomness
@@ -143,7 +146,7 @@ Of interest to us are the `cycle` and `time` counter, which can be accessed by u
 `time` counter holds a count of wall-clock real time passed from an arbitrary start time in the past. 
 
 In R32VI, to get the lower XLEN bits of the two counters, `RDCYCLE` and `RDTIME` are required, while the upper XLEN bits of the two counters are accessed with `RDCYCLEH` and `RDTIMEH`. The instructions follow the format as shown below:
-![Time Counter Instructions](../sources/Time_Counters.png)
+![Time Counter Instructions](sources/Time_Counters.png)
 
 To note, these instructions are not necessarily implemented in the chip itself. Some cores such as [Sifive](https://forums.sifive.com/t/an-exception-occurred-while-using-rdtime/2915) implement their timers off chip and memory map it. Hardware is not required to do all timing. CSRs are optional, and some devices choose to trap to kernel to access off chip timers. So there are many approaches that can be taken! 
 
@@ -151,7 +154,7 @@ However, in the context of the problem of assuming a freestanding environment, l
 
 #### The on-chip way - Adding CSR regfiles
 
-To add support for these instructions, we need a new regfile for CSR registers. At least the first 2 32-bit CSR registers (out of 64 possible 32-bit CSR registers) have to be working by the RISC-V specification to get `RDCYCLE` and `RDTIME`. The new regfile was implemented in [csr_regfile.sv](../Vivado/RISCV_sources/hdl/core/registers/csr_regfile.sv).
+To add support for these instructions, we need a new regfile for CSR registers. At least the first 2 32-bit CSR registers (out of 64 possible 32-bit CSR registers) have to be working by the RISC-V specification to get `RDCYCLE` and `RDTIME`. The new regfile was implemented in [csr_regfile.sv](Vivado/RISCV_sources/hdl/core/registers/csr_regfile.sv).
 
 This also requires modification of the control path and the instruction decoder to pick up these two (or four if `RDCYCLEH` and `RDTIMEH` is also implemented) new instructions. 
 
