@@ -61,14 +61,14 @@ Most of the errors are quite low as found by the original paper. The graphs show
 
 ## C Implementation
 ### Software LAF C library: <laf_sw.h>
-To solve the issue of implementing a neural network in C which uses normal RISC-V instructions to solve the XOR Problem, a new custom header file and its implementation had to be created. These are found at [laf_sw.h](Vivado/RISCV_sources/sim/c_source/laf_sw.h) and [laf_sw.c](Vivado/RISCV_sources/sim/c_source/laf_sw.c). 
+To solve the issue of implementing a neural network in C which uses normal RISC-V instructions to solve the XOR Problem, a new custom header file and its implementation had to be created. These are found at [laf_sw.h](c_source/laf_sw.h) and [laf_sw.c](c_source/laf_sw.c). 
 
 These files define a custom math library as well as all the software implementations for the LAF functions, as the standard library is unavailable on freestanding environments, and many of the math functions that are usually convieniently available are not available. 
 
 The implementation assumes 32 bit registers, hence only `float` and `int` types are used. This is important as some of the helper functions like `leftmostBit()` (which uses a technique called bit smearing for specifically 32 bit long) and the complex functions like `MUL(x, y)` and `SQR(val)` have to use such assumptions to prevent overflow errors.
 
 ### Software implementation of MLP: mlp_sw.c
-Using the custom software LAF library, a whole program to perform MultiLayer Perceptron was written using C. This program works in freestanding environments (if not in `DEBUG` mode) which we need in the RISC V processing system. This file is found at [mlp_sw.c](Vivado/RISCV_sources/sim/c_source/mlp_sw.c). 
+Using the custom software LAF library, a whole program to perform MultiLayer Perceptron was written using C. This program works in freestanding environments (if not in `DEBUG` mode) which we need in the RISC V processing system. This file is found at [mlp_sw.c](c_source/mlp_sw.c). 
 
 In summary, the whole program works by assuming MSE Loss as a loss function and tanh as the activation function. By calculating the forward pass and then doing backpropagation and updating the weights and biases via Stochastic Gradient Descent, the model should be able to learn how to solve the XOR problem even with low counts of hidden neurons so long as there is enough epoches for it to reach the local minima for loss.
 
@@ -154,7 +154,7 @@ However, in the context of the problem of assuming a freestanding environment, l
 
 #### The on-chip way - Adding CSR regfiles
 
-To add support for these instructions, we need a new regfile for CSR registers. At least the first 2 32-bit CSR registers (out of 64 possible 32-bit CSR registers) have to be working by the RISC-V specification to get `RDCYCLE` and `RDTIME`. The new regfile was implemented in [csr_regfile.sv](Vivado/RISCV_sources/hdl/core/registers/csr_regfile.sv).
+To add support for these instructions, we need a new regfile for CSR registers. At least the first 2 32-bit CSR registers (out of 64 possible 32-bit CSR registers) have to be working by the RISC-V specification to get `RDCYCLE` and `RDTIME`. 
 
 This also requires modification of the control path and the instruction decoder to pick up these two (or four if `RDCYCLEH` and `RDTIMEH` is also implemented) new instructions. 
 
@@ -169,5 +169,5 @@ An RNG module is required to ensure the convergence of the MLP to an optima. Ran
 
 As such, more work has to be done on the RNG module and RDTIME modules. These two functions are essential to successfully benchmark the RISC-V CPU in machine learning tasks. RBF Neuron has not been implemented too.
 
-Likewise, if an RNG module is created, a custom macro header file or toolchain has to be built to allow for RNG to work optimally.
+Likewise, if an RNG module is created, a custom macro header file or toolchain has to be built to allow for RNG to have proper software support to load values into the registers of the RISC V CPU.
 
